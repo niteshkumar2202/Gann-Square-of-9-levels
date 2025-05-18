@@ -99,9 +99,15 @@
         }
         
         .cell.highlight-entry {
-            background-color: #28a745 !important; /* Green for Entry */
+            background-color: #28a745 !important; /* Green for Entry (second color) */
             box-shadow: 0 0 10px rgba(40, 167, 69, 0.8);
             border: 2px solid #28a745;
+        }
+        
+        .cell.highlight-entry-input {
+            background-color: #6f42c1 !important; /* Purple for Entry input (third color) */
+            box-shadow: 0 0 10px rgba(111, 66, 193, 0.8);
+            border: 2px solid #6f42c1;
         }
         
         .cell.highlight-target1 {
@@ -378,6 +384,24 @@
             return grid;
         }
         
+        function highlightEntryPrice() {
+            const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.classList.remove('highlight-entry-input');
+            });
+            
+            if (!entryPrice) return;
+            
+            const entryNumber = Math.round(entryPrice);
+            const entryCell = Array.from(cells).find(cell => 
+                parseInt(cell.textContent) === entryNumber
+            );
+            if (entryCell) {
+                entryCell.classList.add('highlight-entry-input');
+            }
+        }
+        
         function highlightRange() {
             const entryPrice = parseFloat(document.getElementById('entryPrice').value);
             if (!entryPrice) {
@@ -395,7 +419,7 @@
             
             const cells = document.querySelectorAll('.cell');
             cells.forEach(cell => {
-                cell.classList.remove('highlight-entry', 'highlight-target1', 'highlight-target2', 'highlight-stoploss', 'angle-highlight');
+                cell.classList.remove('highlight-entry', 'highlight-target1', 'highlight-target2', 'highlight-stoploss', 'angle-highlight', 'highlight-entry-input');
             });
             
             cells.forEach(cell => {
@@ -411,8 +435,8 @@
                 let angle = Math.atan2(deltaRow, deltaCol) * (180 / Math.PI);
                 if (angle < 0) angle += 360;
                 
-                const tolerance = 15;
-                const targetAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+                const tolerance = 5; // Reduced tolerance for precision
+                const targetAngles = [0, 45, 90, 135, 225, 270, 315];
                 
                 for (let targetAngle of targetAngles) {
                     if (Math.abs(angle - targetAngle) <= tolerance || 
@@ -442,7 +466,7 @@
             
             const cells = document.querySelectorAll('.cell');
             cells.forEach(cell => {
-                cell.classList.remove('highlight-entry', 'highlight-target1', 'highlight-target2', 'highlight-stoploss', 'angle-highlight');
+                cell.classList.remove('highlight-entry', 'highlight-target1', 'highlight-target2', 'highlight-stoploss', 'angle-highlight', 'highlight-entry-input');
             });
         }
         
@@ -454,163 +478,4 @@
             }
             
             const target1 = findDiagonalNumber(entryPrice, 1, 'buy');
-            const target2 = findDiagonalNumber(entryPrice, 2, 'buy');
-            const stopLoss = findPerpendicularNumber(entryPrice, 'buy');
-            
-            displayResults(entryPrice, target1, target2, stopLoss);
-        }
-        
-        function calculateSellExitLevels() {
-            const entryPrice = parseFloat(document.getElementById('entryPrice').value);
-            if (!entryPrice) {
-                alert('Please enter a valid entry price');
-                return;
-            }
-            
-            const target1 = findDiagonalNumber(entryPrice, 1, 'sell');
-            const target2 = findDiagonalNumber(entryPrice, 2, 'sell');
-            const stopLoss = findPerpendicularNumber(entryPrice, 'sell');
-            
-            displayResults(entryPrice, target1, target2, stopLoss);
-        }
-        
-        function findNumberPosition(number, grid) {
-            for (let i = 0; i < grid.length; i++) {
-                for (let j = 0; j < grid[i].length; j++) {
-                    if (grid[i][j] === number) {
-                        return { row: i, col: j };
-                    }
-                }
-            }
-            return null;
-        }
-        
-        function findDiagonalNumber(basePrice, step, direction) {
-            const baseNumber = Math.round(basePrice);
-            const basePos = findNumberPosition(baseNumber, currentGrid);
-            
-            if (!basePos) return basePrice;
-            
-            const diagonalPositions = [];
-            const diagonalDirs = [
-                [-1, -1], [-1, 1], [1, -1], [1, 1]
-            ];
-            
-            for (let dir of diagonalDirs) {
-                let currentRow = basePos.row + (dir[0] * step);
-                let currentCol = basePos.col + (dir[1] * step);
-                
-                if (currentRow >= 0 && currentRow < currentGrid.length && 
-                    currentCol >= 0 && currentCol < currentGrid[0].length) {
-                    const value = currentGrid[currentRow][currentCol];
-                    if (value > 0) {
-                        diagonalPositions.push(value);
-                    }
-                }
-            }
-            
-            if (diagonalPositions.length > 0) {
-                if (direction === 'buy') {
-                    return Math.max(...diagonalPositions);
-                } else {
-                    return Math.min(...diagonalPositions);
-                }
-            }
-            
-            return direction === 'buy' ? baseNumber + step * 3 : Math.max(1, baseNumber - step * 3);
-        }
-        
-        function findPerpendicularNumber(basePrice, direction) {
-            const baseNumber = Math.round(basePrice);
-            const basePos = findNumberPosition(baseNumber, currentGrid);
-            
-            if (!basePos) return basePrice;
-            
-            let currentRow, currentCol;
-            
-            if (direction === 'buy') {
-                // Look vertically up (previous row, same column, 90°)
-                currentRow = basePos.row - 1;
-                currentCol = basePos.col;
-            } else {
-                // Look vertically down (next row, same column, 270°)
-                currentRow = basePos.row + 1;
-                currentCol = basePos.col;
-            }
-            
-            // Check if the position is within grid bounds
-            if (currentRow >= 0 && currentRow < currentGrid.length && 
-                currentCol >= 0 && currentCol < currentGrid[0].length) {
-                const value = currentGrid[currentRow][currentCol];
-                if (value > 0) {
-                    // For buy: SL must be less than entry
-                    // For sell: SL must be greater than entry
-                    if (direction === 'buy' && value < baseNumber) {
-                        return value;
-                    } else if (direction === 'sell' && value > baseNumber) {
-                        return value;
-                    }
-                }
-            }
-            
-            // Fallback if no valid number is found
-            return direction === 'buy' ? Math.max(1, baseNumber - 5) : baseNumber + 5;
-        }
-        
-        function displayResults(entry, target1, target2, stopLoss) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = `
-                <div class="result-box entry highlighted-entry">ENTRY: ${entry.toFixed(2)}</div>
-                <div class="result-box target1 highlighted-target1">TARGET1: ${target1.toFixed(2)}</div>
-                <div class="result-box target2 highlighted-target2">TARGET2: ${target2.toFixed(2)}</div>
-                <div class="result-box stoploss highlighted-stoploss">STOPLOSS: ${stopLoss.toFixed(2)}</div>
-            `;
-            
-            highlightTradingLevels(Math.round(entry), Math.round(target1), Math.round(target2), Math.round(stopLoss));
-        }
-        
-        function highlightTradingLevels(entry, target1, target2, stopLoss) {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(cell => {
-                cell.classList.remove('highlight-entry', 'highlight-target1', 'highlight-target2', 'highlight-stoploss');
-            });
-            
-            cells.forEach(cell => {
-                const cellValue = parseInt(cell.textContent);
-                if (cellValue === entry) {
-                    cell.classList.add('highlight-entry');
-                } else if (cellValue === target1) {
-                    cell.classList.add('highlight-target1');
-                } else if (cellValue === target2) {
-                    cell.classList.add('highlight-target2');
-                } else if (cellValue === stopLoss) {
-                    cell.classList.add('highlight-stoploss');
-                }
-            });
-        }
-        
-        function calculateDegree() {
-            const swingHigh = parseFloat(document.getElementById('swingHigh').value);
-            const swingLow = parseFloat(document.getElementById('swingLow').value);
-            const entryPrice = parseFloat(document.getElementById('entryPrice').value) || 0;
-            
-            if (!swingHigh || !swingLow) {
-                alert('Please enter both swing high and swing low prices');
-                return;
-            }
-            
-            const priceRange = swingHigh - swingLow;
-            const midPoint = (swingHigh + swingLow) / 2;
-            const deltaY = midPoint - entryPrice;
-            const deltaX = 1;
-            
-            const degree = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-            
-            document.getElementById('waveResult').innerHTML = 
-                `<span class="highlighted-wave-result">Wave Degree: ${Math.abs(degree).toFixed(2)}°</span>`;
-        }
-        
-        generateSpiral();
-    </script>
-</body>
-</html>
+            const target2 = findDiagonalNumber(entryPrice
